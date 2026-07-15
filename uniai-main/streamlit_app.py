@@ -250,14 +250,39 @@ div[data-testid="stAlert"] {
 # ─────────────────────────────────────────────
 # Gemini AI Setup
 # ─────────────────────────────────────────────
-def get_gemini_model():
-    """Initialize and return the Gemini model."""
+# Models to try in order (fallback chain)
+GEMINI_MODELS = [
+    'gemini-2.0-flash-lite',   # highest free-tier quota
+    'gemini-2.0-flash',
+    'gemini-1.5-flash-latest',
+]
+
+def get_api_key():
+    """Retrieve the Gemini API key from secrets or environment."""
     api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
     if not api_key:
-        st.error("⚠️ **GEMINI_API_KEY** not found. Please add it to your Streamlit secrets or environment variables.")
+        st.error("⚠️ **GEMINI_API_KEY** not found. Please add it to Streamlit Secrets via the dashboard.")
         st.stop()
+    return api_key
+
+def call_gemini_with_fallback(prompt: str) -> str:
+    """Try each model in GEMINI_MODELS until one succeeds."""
+    api_key = get_api_key()
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel('gemini-2.0-flash')
+    last_error = None
+    for model_name in GEMINI_MODELS:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            last_error = e
+            err_str = str(e)
+            # Only continue to next model on quota/not-found errors
+            if '429' in err_str or '404' in err_str or 'quota' in err_str.lower():
+                continue
+            raise  # Re-raise non-quota errors immediately
+    raise last_error  # All models failed
 
 # ─────────────────────────────────────────────
 # Prompt & Parser (same logic as original app)
@@ -381,12 +406,31 @@ if search_clicked:
     else:
         with st.spinner("🤖 AI is searching for the best universities for you…"):
             try:
-                model = get_gemini_model()
                 prompt = generate_prompt(student_country, course, degree, target_country, fees)
-                response = model.generate_content(prompt)
-                universities = parse_gemini_response(response.text)
+                response_text = call_gemini_with_fallback(prompt)
+                universities = parse_gemini_response(response_text)
             except Exception as e:
-                st.error(f"❌ An error occurred while contacting Gemini AI: {e}")
+                err_str = str(e)
+                if '429' in err_str or 'quota' in err_str.lower():
+                    st.error("""
+❌ **API Quota Exceeded**
+
+Your Gemini API key has **zero free-tier quota**. This happens when the key was 
+created from **Google Cloud Console** instead of **Google AI Studio**.
+
+**Fix in 2 minutes:**
+1. Go to 👉 [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+2. Click **"Create API Key"** — this key has free quota
+3. In Streamlit Cloud → App Settings → **Secrets**, replace the current key:
+```
+GEMINI_API_KEY = "AIzaSy_your_new_key_here"
+```
+4. Save → app restarts → try again ✅
+                    """)
+                elif '404' in err_str or 'not found' in err_str.lower():
+                    st.error("❌ Gemini model not available for your API key. Please create a fresh key from [AI Studio](https://aistudio.google.com/app/apikey).")
+                else:
+                    st.error(f"❌ Gemini API error: {e}")
                 universities = []
 
         if not universities:
