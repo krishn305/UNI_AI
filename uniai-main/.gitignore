@@ -1,0 +1,20 @@
+# ── Secrets (NEVER commit these) ──
+.streamlit/secrets.toml
+.env
+*.env
+
+# ── Python cache ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ──
+venv/
+env/
+.venv/
+
+# ── OS junk ──
+.DS_Store
+Thumbs.db
