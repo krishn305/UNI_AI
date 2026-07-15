@@ -1,7 +1,8 @@
 import os
 import re
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # ─────────────────────────────────────────────
 # Page Configuration
@@ -255,8 +256,6 @@ GEMINI_MODELS = [
     'gemini-2.0-flash',
     'gemini-1.5-flash',
     'gemini-1.5-flash-latest',
-    'gemini-1.5-pro',
-    'gemini-pro',               # legacy fallback
 ]
 
 def get_api_key():
@@ -270,18 +269,20 @@ def get_api_key():
 def call_gemini_with_fallback(prompt: str) -> str:
     """Try each model in GEMINI_MODELS until one succeeds."""
     api_key = get_api_key()
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     last_error = None
     for model_name in GEMINI_MODELS:
         try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
             return response.text
         except Exception as e:
             last_error = e
             err_str = str(e)
             # Only continue to next model on quota/not-found errors
-            if '429' in err_str or '404' in err_str or 'quota' in err_str.lower():
+            if '429' in err_str or '404' in err_str or 'quota' in err_str.lower() or 'not found' in err_str.lower():
                 continue
             raise  # Re-raise non-quota errors immediately
     raise last_error  # All models failed
