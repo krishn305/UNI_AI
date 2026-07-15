@@ -257,7 +257,7 @@ def get_gemini_model():
         st.error("⚠️ **GEMINI_API_KEY** not found. Please add it to your Streamlit secrets or environment variables.")
         st.stop()
     genai.configure(api_key=api_key)
-    return genai.GenerativeModel('gemini-1.5-flash')
+    return genai.GenerativeModel('gemini-2.0-flash')
 
 # ─────────────────────────────────────────────
 # Prompt & Parser (same logic as original app)
