@@ -250,11 +250,13 @@ div[data-testid="stAlert"] {
 # ─────────────────────────────────────────────
 # Gemini AI Setup
 # ─────────────────────────────────────────────
-# Models to try in order (fallback chain)
 GEMINI_MODELS = [
-    'gemini-2.0-flash-lite',   # highest free-tier quota
+    'gemini-2.0-flash-lite',    # highest free-tier quota
     'gemini-2.0-flash',
+    'gemini-1.5-flash',
     'gemini-1.5-flash-latest',
+    'gemini-1.5-pro',
+    'gemini-pro',               # legacy fallback
 ]
 
 def get_api_key():
@@ -428,7 +430,18 @@ GEMINI_API_KEY = "AIzaSy_your_new_key_here"
 4. Save → app restarts → try again ✅
                     """)
                 elif '404' in err_str or 'not found' in err_str.lower():
-                    st.error("❌ Gemini model not available for your API key. Please create a fresh key from [AI Studio](https://aistudio.google.com/app/apikey).")
+                    st.error("""
+❌ **Gemini API Not Enabled for Your Project**
+
+Your API key is valid but the **Generative Language API** is not turned on for your Google Cloud project.
+
+**Fix in 2 minutes:**
+1. 👉 Click: [Enable Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com)
+2. Select your project → Click **"Enable"**
+3. Wait 30 seconds, then try searching again ✅
+
+If that doesn't help, create a fresh key directly from 👉 [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) — AI Studio enables the API automatically.
+                    """)
                 else:
                     st.error(f"❌ Gemini API error: {e}")
                 universities = []
